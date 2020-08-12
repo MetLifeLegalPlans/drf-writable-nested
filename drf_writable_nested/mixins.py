@@ -3,7 +3,8 @@ from collections import OrderedDict, defaultdict
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import ProtectedError, FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist
+from django.db.models import ProtectedError
 from django.db.models.fields.related import ForeignObjectRel
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
@@ -87,7 +88,8 @@ class BaseNestedModelSerializer(serializers.ModelSerializer):
         # if field is a polymorphic serializer
         if hasattr(field, '_get_serializer_from_resource_type'):
             # get 'real' serializer based on resource type
-            serializer = field._get_serializer_from_resource_type(kwargs.get('data').get('resourcetype'))
+            serializer = field._get_serializer_from_resource_type(
+                kwargs.get('data').get('resourcetype'))
 
             return serializer.__class__(**kwargs)
         else:
@@ -245,6 +247,7 @@ class NestedCreateMixin(BaseNestedModelSerializer):
     """
     Adds nested create feature
     """
+
     def create(self, validated_data):
         relations, reverse_relations = self._extract_relations(validated_data)
 
