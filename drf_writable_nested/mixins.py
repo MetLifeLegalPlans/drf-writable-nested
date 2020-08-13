@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import ProtectedError
 from django.db.models.fields.related import ForeignObjectRel
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -89,7 +89,8 @@ class BaseNestedModelSerializer(serializers.ModelSerializer):
         if hasattr(field, '_get_serializer_from_resource_type'):
             # get 'real' serializer based on resource type
             serializer = field._get_serializer_from_resource_type(
-                kwargs.get('data').get('resourcetype'))
+                kwargs.get('data').get(field.resource_type_field_name)
+            )
 
             return serializer.__class__(**kwargs)
         else:
@@ -386,10 +387,13 @@ class UniqueFieldsMixin(serializers.ModelSerializer):
     def _validate_unique_fields(self, validated_data):
         for field_name in self._unique_fields:
             unique_validator = UniqueValidator(self.Meta.model.objects.all())
-            unique_validator.set_context(self.fields[field_name])
-
             try:
-                unique_validator(validated_data[field_name])
+                # `set_context` removed on DRF >= 3.11, pass in via __call__ instead
+                if hasattr(unique_validator, 'set_context'):
+                    unique_validator.set_context(self.fields[field_name])
+                    unique_validator(validated_data[field_name])
+                else:
+                    unique_validator(validated_data[field_name], self.fields[field_name])
             except ValidationError as exc:
                 raise ValidationError({field_name: exc.detail})
 
